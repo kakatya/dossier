@@ -42,10 +42,12 @@ public class KafkaTopicConfig {
     public NewTopic sendSesTopic() {
         return new NewTopic(Theme.SEND_SES.name(), 1, (short) 1);
     }
+
     @Bean
     public NewTopic creditIssuedTopic() {
         return new NewTopic(Theme.CREDIT_ISSUED.name(), 1, (short) 1);
     }
+
     @Bean
     public NewTopic applicationDeniedTopic() {
         return new NewTopic(Theme.APPLICATION_DENIED.name(), 1, (short) 1);

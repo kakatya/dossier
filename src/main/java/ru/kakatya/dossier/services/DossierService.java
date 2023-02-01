@@ -1,7 +1,5 @@
 package ru.kakatya.dossier.services;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.mail.SimpleMailMessage;
@@ -12,76 +10,50 @@ import ru.kakatya.dossier.dtos.EmailMessageDto;
 @Service
 public class DossierService {
     @Autowired
-    public JavaMailSender emailSender;
+    private JavaMailSender emailSender;
 
-    @KafkaListener(topics = "FINISH_REGISTRATION", groupId = "conveyorGroup")
-    public void sendFinishRegistrationEmail(String emailMessageDto) {
-        EmailMessageDto messageDto = createEmailDto(emailMessageDto);
-        SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
-        simpleMailMessage.setTo(messageDto.getAddress());
-        simpleMailMessage.setSubject(messageDto.getTheme().name());
-        simpleMailMessage.setText(String.format("Dear client,  your application #%S. For the final registration we need your full data.", messageDto.getApplicationId()));
-        emailSender.send(simpleMailMessage);
+    @KafkaListener(topics = "${topics.finish-registr}", groupId = "${spring.kafka.consumer.group-id}")
+    public void sendFinishRegistrationEmail(EmailMessageDto emailMessageDto) {
+        String ms = "Dear client,  your application #%S. For the final registration we need your full data.";
+        sendMessage(emailMessageDto, ms);
     }
 
-    @KafkaListener(topics = "CREATE_DOCUMENTS", groupId = "conveyorGroup")
-    public void sendCreateDocumentEmail(String email) {
-        EmailMessageDto emailMessageDto = createEmailDto(email);
-        SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
-        simpleMailMessage.setTo(emailMessageDto.getAddress());
-        simpleMailMessage.setSubject(emailMessageDto.getTheme().name());
-        simpleMailMessage.setText(String.format("Dear client,  your application #%S passed all checking. Now you should send creating document request.", emailMessageDto.getApplicationId()));
-        emailSender.send(simpleMailMessage);
+    @KafkaListener(topics = "${topics.create-doc}", groupId = "${spring.kafka.consumer.group-id}")
+    public void sendCreateDocumentEmail(EmailMessageDto emailMessageDto) {
+        String ms = "Dear client,  your application #%S passed all checking. Now you should send creating document request.";
+        sendMessage(emailMessageDto, ms);
     }
 
-    @KafkaListener(topics = "SEND_DOCUMENTS", groupId = "conveyorGroup")
-    public void sendLoanDocuments(String email) {
-        EmailMessageDto emailMessageDto = createEmailDto(email);
-        SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
-        simpleMailMessage.setTo(emailMessageDto.getAddress());
-        simpleMailMessage.setSubject(emailMessageDto.getTheme().name());
-        simpleMailMessage.setText(String.format("Dear client,  your application #%S. Here are your documents.", emailMessageDto.getApplicationId()));
-        emailSender.send(simpleMailMessage);
+    @KafkaListener(topics = "${topics.send-doc}", groupId = "${spring.kafka.consumer.group-id}")
+    public void sendLoanDocuments(EmailMessageDto emailMessageDto) {
+        String ms = "Dear client,  your application #%S. Here are your documents.";
+        sendMessage(emailMessageDto, ms);
     }
 
-    @KafkaListener(topics = "SEND_SES", groupId = "conveyorGroup")
-    public void sendSesCode(String email) {
-        EmailMessageDto emailMessageDto = createEmailDto(email);
-        SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
-        simpleMailMessage.setTo(emailMessageDto.getAddress());
-        simpleMailMessage.setSubject(emailMessageDto.getTheme().name());
-        simpleMailMessage.setText(String.format("Dear client,  your application #%S. Here are your ses-code:.", emailMessageDto.getApplicationId()));
-        emailSender.send(simpleMailMessage);
+    @KafkaListener(topics = "${topics.send-ses}", groupId = "${spring.kafka.consumer.group-id}")
+    public void sendSesCode(EmailMessageDto emailMessageDto) {
+        String ms = "Dear client,  your application #%S. Here are your ses-code:.";
+        sendMessage(emailMessageDto, ms);
     }
 
-    @KafkaListener(topics = "CREDIT_ISSUED", groupId = "conveyorGroup")
-    public void sendIssuedCreditEmail(String email) {
-        EmailMessageDto emailMessageDto = createEmailDto(email);
+    @KafkaListener(topics = "${topics.credit-issd}", groupId = "${spring.kafka.consumer.group-id}")
+    public void sendIssuedCreditEmail(EmailMessageDto emailMessageDto) {
+        String ms = "Dear client,  your application #%S. You got a loan, thank you.";
+        sendMessage(emailMessageDto, ms);
+    }
+
+    @KafkaListener(topics = "${topics.appl-denied}", groupId = "${spring.kafka.consumer.group-id}")
+    public void sendApplicationDeniedEmail(EmailMessageDto emailMessageDto) {
+        String ms = "Dear client,  your application #%S has been rejected.";
+        sendMessage(emailMessageDto, ms);
+    }
+
+    private void sendMessage(EmailMessageDto emailMessageDto, String emailText) {
         SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
         simpleMailMessage.setTo(emailMessageDto.getAddress());
         simpleMailMessage.setSubject(emailMessageDto.getTheme().name());
-        simpleMailMessage.setText(String.format("Dear client,  your application #%S. You got a loan, thank you.", emailMessageDto.getApplicationId()));
+        simpleMailMessage.setText(String.format(emailText, emailMessageDto.getApplicationId()));
         emailSender.send(simpleMailMessage);
     }
 
-    @KafkaListener(topics = "APPLICATION_DENIED", groupId = "conveyorGroup")
-    public void sendApplicationDeniedEmail(String email) {
-        EmailMessageDto emailMessageDto = createEmailDto(email);
-        SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
-        simpleMailMessage.setTo(emailMessageDto.getAddress());
-        simpleMailMessage.setSubject(emailMessageDto.getTheme().name());
-        simpleMailMessage.setText(String.format("Dear client,  your application #%S has been rejected.", emailMessageDto.getApplicationId()));
-        emailSender.send(simpleMailMessage);
-    }
-
-    private EmailMessageDto createEmailDto(String email) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        EmailMessageDto emailMessageDto;
-        try {
-            emailMessageDto = objectMapper.readValue(email, EmailMessageDto.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-        return emailMessageDto;
-    }
 }
