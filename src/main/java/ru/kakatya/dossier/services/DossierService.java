@@ -29,14 +29,14 @@ public class DossierService {
     @KafkaListener(topics = "${topics.finish-registr}", groupId = "${spring.kafka.consumer.group-id}")
     public void sendFinishRegistrationEmail(EmailMessageDto emailMessageDto) {
         LOGGER.info("send \"finish registration\" email.");
-        String ms = "Dear client,  your application #%S. For the final registration we need your full data.";
+        String ms = "Dear client,  your application #%S. For the final registration we need your full data. Follow this link: http://127.0.0.1:8084/swagger-ui/index.html#/gateway-controller/finishRegisterUsingPOST";
         sendMessage(emailMessageDto, ms);
     }
 
     @KafkaListener(topics = "${topics.create-doc}", groupId = "${spring.kafka.consumer.group-id}")
     public void sendCreateDocumentEmail(EmailMessageDto emailMessageDto) {
         LOGGER.info("send \"create document request\" email.");
-        String ms = "Dear client,  your application #%S passed all checking. Now you should send creating document request.";
+        String ms = "Dear client,  your application #%S passed all checking. Now you should send creating document request. Follow this link: http://127.0.0.1:8084/swagger-ui/index.html#/gateway-controller/requestCreationDocumentsUsingPOST";
         sendMessage(emailMessageDto, ms);
     }
 
@@ -45,7 +45,8 @@ public class DossierService {
         try {
             LOGGER.info("send get application request to the deal service");
             ApplicationDto applicationDto = dealServiceFeignClient.getApplication(emailMessageDto.getApplicationId()).getBody();
-            String ms = String.format("Dear client,  your application #%s. Here are your documents.", emailMessageDto.getApplicationId().toString());
+            String ms = String.format("Dear client,  your application #%s. Here are your documents. Follow this link for request sign documents: http://127.0.0.1:8084/swagger-ui/index.html#/gateway-controller/requestSesCodeUsingPOST",
+                    emailMessageDto.getApplicationId().toString());
             LOGGER.info("send \"send documents\" email.");
             if (applicationDto != null)
                 createDocuments(applicationDto, emailMessageDto, ms);
@@ -61,7 +62,8 @@ public class DossierService {
         try {
             if (dealServiceFeignClient.getApplication(emailMessageDto.getApplicationId()).hasBody()) {
                 String sesCode = dealServiceFeignClient.getApplication(emailMessageDto.getApplicationId()).getBody().getSesCode();
-                String ms = String.format("Dear client,  your application #%s. Here are your ses-code: %s.", emailMessageDto.getApplicationId(), sesCode);
+                String ms = String.format("Dear client,  your application #%s. Here are your ses-code: %s. Follow this link for sign documents: http://127.0.0.1:8084/swagger-ui/index.html#/gateway-controller/verifySesCodeUsingPOST",
+                        emailMessageDto.getApplicationId(), sesCode);
                 LOGGER.info("send \"sescode\" email.");
                 sendMessage(emailMessageDto, ms);
             } else throw new NullPointerException("application not found");
@@ -108,6 +110,7 @@ public class DossierService {
             Files.write(paymentScheduleFile, applicationDto.getCredit().getPaymentSchedule().toString().getBytes(StandardCharsets.UTF_8));
             helper.setTo(emailMessageDto.getAddress());
             helper.setText(text);
+            helper.setSubject(emailMessageDto.getTheme().name());
             helper.addAttachment("clientData", clientFile.toFile());
             helper.addAttachment("creditData", creditFile.toFile());
             helper.addAttachment("paymentSchedule", paymentScheduleFile.toFile());
